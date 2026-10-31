@@ -1,0 +1,26 @@
+﻿[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acausal-engine"
+version = "0.2.0"
+description = "A classical simulation toolkit for indefinite causal order (process matrices, quantum switch, USO)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Lexatellah" }]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[project.urls]
+Repository = "https://github.com/Lexatellah/acausal-engine"
+
+[tool.setuptools.packages.find]
+include = ["acausal_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

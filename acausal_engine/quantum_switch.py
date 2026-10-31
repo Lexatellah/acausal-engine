@@ -1,13 +1,13 @@
 ﻿"""
-Explicit construction of the 2-qubit quantum switch process matrix.
+Quantum switch process matrices.
+
+Two constructions:
+    quantum_switch_2qubit()  - the canonical d=2 case (explicit)
+    quantum_switch_qudit(d)  - general target dimension d
 """
 
 import numpy as np
 from .process_matrix import ChoiMatrix
-
-
-def _I(dim: int) -> np.ndarray:
-    return np.eye(dim, dtype=complex)
 
 
 def _ket0() -> np.ndarray:
@@ -19,6 +19,7 @@ def _ket1() -> np.ndarray:
 
 
 def _swap_gate(dim: int) -> np.ndarray:
+    """SWAP gate for two systems of dimension `dim`."""
     d2 = dim * dim
     S = np.zeros((d2, d2), dtype=complex)
     for i in range(dim):
@@ -27,33 +28,44 @@ def _swap_gate(dim: int) -> np.ndarray:
     return S
 
 
-def quantum_switch_2qubit() -> ChoiMatrix:
-    """
-    Construct the Choi matrix of the 2-qubit quantum switch.
+def _phi_plus(d: int) -> np.ndarray:
+    """Maximally entangled state on C^d x C^d."""
+    phi = np.zeros((d * d,), dtype=complex)
+    for i in range(d):
+        phi[i * d + i] = 1.0 / np.sqrt(d)
+    return phi
 
-    Basis: |c>|a>|b> with c in {0,1} (control), a,b in {0,1} (targets).
-    The pure state |w> is:
-        (|0>_C |Phi+>_AB + |1>_C |Phi+>_BA) / sqrt(2)
-    where |Phi+> = (|00> + |11>)/sqrt(2).
+
+def quantum_switch_qudit(target_dim: int = 2) -> ChoiMatrix:
     """
+    Choi matrix of the quantum switch for target dimension `target_dim`.
+
+    Control is always 2-dimensional (|0> = A before B, |1> = B before A).
+    Total Hilbert dimension = 2 * d * d.
+
+    Parameters
+    ----------
+    target_dim : int
+        Dimension of each target system (default 2).
+
+    Returns
+    -------
+    ChoiMatrix
+    """
+    d = int(target_dim)
+    if d < 1:
+        raise ValueError("target_dim must be >= 1.")
+
     d_control = 2
-    d_target = 2
-    d_total = d_control * d_target * d_target  # 8
+    d_total = d_control * d * d
 
-    phi_plus = np.zeros((d_target * d_target,), dtype=complex)
-    phi_plus[0 * d_target + 0] = 1.0 / np.sqrt(2)
-    phi_plus[1 * d_target + 1] = 1.0 / np.sqrt(2)
-
-    swap = _swap_gate(d_target)
-    phi_plus_swapped = swap @ phi_plus
+    phi = _phi_plus(d)
+    swap = _swap_gate(d)
+    phi_swapped = swap @ phi
 
     w = np.zeros((d_total,), dtype=complex)
-    w[0 * (d_target * d_target) : 1 * (d_target * d_target)] = (
-        phi_plus / np.sqrt(2)
-    )
-    w[1 * (d_target * d_target) : 2 * (d_target * d_target)] = (
-        phi_plus_swapped / np.sqrt(2)
-    )
+    w[0 : d * d] = phi / np.sqrt(2)
+    w[d * d : 2 * d * d] = phi_swapped / np.sqrt(2)
 
     w = w.reshape(d_total, 1)
     W = w @ w.conj().T
@@ -61,30 +73,31 @@ def quantum_switch_2qubit() -> ChoiMatrix:
     return ChoiMatrix(W)
 
 
+def quantum_switch_2qubit() -> ChoiMatrix:
+    """Canonical 2-qubit switch (d=2). Alias of quantum_switch_qudit(2)."""
+    return quantum_switch_qudit(2)
+
+
 def fixed_order_process(order: str = "AB") -> ChoiMatrix:
     """
-    Construct a trivial fixed-order process matrix for comparison.
+    Fixed-order process matrix on control (2-dim) and two target qubits.
     order = 'AB' or 'BA'.
     """
-    d_control = 2
-    d_target = 2
-    d_total = d_control * d_target * d_target  # 8
-
     if order not in ("AB", "BA"):
         raise ValueError("order must be 'AB' or 'BA'.")
 
-    phi_plus = np.zeros((d_target * d_target,), dtype=complex)
-    phi_plus[0 * d_target + 0] = 1.0 / np.sqrt(2)
-    phi_plus[1 * d_target + 1] = 1.0 / np.sqrt(2)
+    d_target = 2
+    d_total = 2 * d_target * d_target
 
+    phi = _phi_plus(d_target)
     swap = _swap_gate(d_target)
-    phi_plus_swapped = swap @ phi_plus
+    phi_swapped = swap @ phi
 
     if order == "AB":
-        target_state = phi_plus
+        target_state = phi
         control_state = _ket0()
     else:
-        target_state = phi_plus_swapped
+        target_state = phi_swapped
         control_state = _ket1()
 
     w = np.kron(control_state, target_state).reshape(d_total, 1)
