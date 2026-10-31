@@ -1,5 +1,4 @@
-﻿import pytest
-from acausal_engine.uso import RandomUSO
+﻿from acausal_engine.uso import RandomUSO
 
 
 def test_random_uso_dim_1():
@@ -31,6 +30,7 @@ def test_multiple_seeds_produce_valid_usos():
         uso = RandomUSO(dim=3, seed=seed)
         sink = uso.find_sink_bruteforce()
         assert uso.is_sink(sink)
+        assert uso.find_sink_walk() == sink
 
 
 def test_walk_terminates_on_valid_uso():
